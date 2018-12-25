@@ -4,11 +4,20 @@ const inquirer = require('inquirer');
 const superagent = util.superagent;
 const Promise = require('bluebird');
 
-// options.caspMngUrl
-// options.accountId
-// options.activeVaultId
-// options.participant (.id .name)
-//
+/**
+ * Selects an active vault
+ * If there is only one active vault, use it
+ * If there is more than one active vault, try to use last selected vault
+ * or let the user choose a vault
+ * If there are no active vault, prompt the user to create a new vault
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {Object} options.activeAccount - Details of the active CASP accounts (id, name)
+ * @param  {Object} options.activeVault - Details of the CASP vault to use for signature
+ * @param  {Object} options.activeParticipant - Details of an active participant
+ *                  to use as vault member when creating a new vault
+ * @return {Object} Data of the selected vault(id, name etc...)
+ */
 async function selectActiveVault(options) {
   const vaultsUrl = `${options.caspMngUrl}/accounts/${options.activeAccount.id}/vaults`;
   util.showSpinner('Fetching vaults');
@@ -19,7 +28,7 @@ async function selectActiveVault(options) {
   // if only one active vault use it,
   // otherwise try to use last selected vault
   var selected = vaults.length === 1 && vaults[0]
-            || vaults.find(v => v.id === options.activeVaultId);
+            || vaults.find(v => v.id === (options.activeVault || {}).id);
 
   if(vaults.length && !selected) {
     util.log('Please choose a vault')
@@ -29,7 +38,7 @@ async function selectActiveVault(options) {
     ])).vault;
   } else if(!vaults.length){
     util.log('No active vaults found, please create one');
-    var participant = options.participant;
+    var participant = options.activeParticipant;
     while(!selected) {
       selected = await createVault(options);
     }
@@ -42,6 +51,15 @@ async function selectActiveVault(options) {
 // options.activeParticipant
 // options.activeAccount
 // options.caspMngUrl
+/**
+ * Prompts the user and creates a new vault
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {Object} options.activeAccount - Details of the active CASP accounts (id, name)
+ * @param  {Object} options.activeParticipant - Details of an active participant
+ *                  to use as vault member for the new vault
+ * @return {Object} Data of the created vault(id, name etc...)
+ */
 async function createVault(options) {
   var newVault;
   while(!newVault) {
