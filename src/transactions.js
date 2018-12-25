@@ -190,7 +190,7 @@ async function signTransaction(options) {
       })).body.operationID;
     util.hideSpinner();
     util.log('Signature process started, signature must be approved by vault participant');
-    util.log(`To approve with bot, run: 'java -Djava.library.path=. -jar BotSigner.jar -u http://localhost/casp -p ${options.activeParticipant.id} -w 1234567890`);
+    util.log(`To approve with bot, run: 'java -Djava.library.path=. -jar BotSigner.jar -u http://localhost/casp -p ${options.activeParticipant.id} -w 1234567890'`);
     util.showSpinner('Waiting for signature quorum approval');
     var signOp;
     do {
@@ -242,6 +242,7 @@ async function sendTransaction(options) {
   util.showSpinner('Sending signed transaction to ledger');
   var res = await web3.eth.sendSignedTransaction(txHex);
   util.hideSpinner();
+  util.log(`Transaction sent successfully, txHash is: ${res.transactionHash}`);
   return res.transactionHash;
 }
 
