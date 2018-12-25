@@ -3,8 +3,19 @@ const inquirer = require('inquirer');
 const util = require('./util');
 const superagent = util.superagent;
 
-// caspMngUrl
-// activeAccount
+/**
+ * Selects an active CASP account
+ * Try to use last selected account
+ * If there is only one active account use it
+ * Othewise if there are multiple active accounts, let the user select one
+ *
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL of CASP management API
+ * @param  {Object} options.activeAccount - last selected active account
+ * @param  {string} options.activeAccount.id - id of last selected active account
+ * @param  {string} options.activeAccount.name - name of last selected active account
+ * @return {Object} The selected account details (id, name etc...)
+ */
 async function selectActiveAccount(options) {
   util.showSpinner('Fetching accounts');
   const accounts = (await superagent.get(`${options.caspMngUrl}/accounts`)).body;

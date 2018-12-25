@@ -10,6 +10,13 @@ const Promise = require('bluebird');
 
 var web3;
 
+
+/**
+ * Create an Ethereum address from a raw EC public key buffer
+ *
+ * @param  {Buffer} rawEcPubKey - raw bytes of the EC public key
+ * @return {string} An Ethereum address
+ */
 function addressFromPublicKey(rawEcPubKey) {
   if(rawEcPubKey.length === 65) {
     // remove prefix
@@ -20,6 +27,15 @@ function addressFromPublicKey(rawEcPubKey) {
   return `0x${address.toString('hex')}`;
 }
 
+
+/**
+ * Extract raw public key bytes from DER encoded EC public key
+ * CASP returns genrated keys in DER format so we need to extract relevant
+ * data for address generation
+ *
+ * @param  {string} publicKeyDerHexString - DER hex-encoded ECDSA public key from CASP
+ * @return {Buffer} a buffer with byte data of the public key
+ */
 function getRawEcPublicKeyFromDerHex(publicKeyDerHexString) {
   const pkDerBuf = Buffer.from(publicKeyDerHexString, 'hex');
   const arrayBuffer = new ArrayBuffer(pkDerBuf.length);
@@ -30,7 +46,15 @@ function getRawEcPublicKeyFromDerHex(publicKeyDerHexString) {
   return Buffer.from(hex);
 }
 
-//caspMngUrl
+/**
+ * Creates a new BIP44 Ethereum address with CASP
+ *
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL of CASP management API
+ * @param  {Object} options.activeVault - Details of the last selected vault(id, name)
+ * @return {Object} Address information for the generated Ethereum address,
+ * includes the address, DER encoded public key and hex encoded raw public key bytes
+ */
 async function createAddress(options) {
   const vault = options.activeVault;
   const isBip44 = vault.hierarchy === 'BIP44';
@@ -52,8 +76,14 @@ async function createAddress(options) {
   };
 }
 
-//options.infuraUrl
-//options.addressInfo.address
+/**
+ * Waits until funds are deposited for address
+ * Uses web3.js
+ * @param  {Object} options
+ * @param  {string} options.infuraUrl - URL for infura ledger server
+ * @param  {Object} options.addressInfo - Information for the requested address(address)
+ * @return {string} The balance as string
+ */
 async function waitForDeposit(options) {
   var web3 = new Web3(options.infuraUrl);
   var address = options.addressInfo.address;
@@ -76,27 +106,29 @@ async function waitForDeposit(options) {
   }
 }
 
+/**
+ * Creates an Ethereum transaction
+ * Uses web3.js
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {string} options.infuraUrl - URL for infura ledger server
+ * @param  {Object} options.addressInfo - Information of the address to withdraw from (address, publicKeyDER )
+ * @return {Object} Details of the created transaction including the parameters
+ *                  that were used to create it and the transaction hash for signature
+ */
 async function createTransaction(options) {
   var web3 = new Web3(options.infuraUrl);
   var amount = BigInt(options.addressInfo.balance);
   var gasPrice = BigInt(await web3.eth.getGasPrice());
-  // use last used recipient
-  var recipientAddress = options.pendingTransaction
-      && (options.pendingTransaction.txData || {}).to ;
   var transactionData = {
     from: options.addressInfo.address,
     to: (await inquirer.prompt([{name: 'to', validate: util.required('To address'),
-            message: 'To address: ', default: recipientAddress }])).to
+            message: 'To address: ' }])).to
   };
   var gasLimit = BigInt(await web3.eth.estimateGas({
     to: transactionData.to,
     value: amount.toString()
   }));
-  // calculate max transfer amount
-  // var maxTransferAmount = BigInt(amount) - BigInt(gasLimit) * BigInt(gasPrice);
-  // var amountToTransfer = await inquirer.prompt([{
-  //   name: 'amount', message: 'Amount: ', default: maxTransferAmount, validate: util.required(amountToTransfer)
-  // }])
   var nonce = await web3.eth.getTransactionCount(transactionData.from, 'pending');
   var toHex = a => '0x' + a.toString(16);
   transactionData = {...transactionData,
@@ -122,6 +154,20 @@ async function createTransaction(options) {
   }
 }
 
+/**
+ * Sign a transaction with CASP
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {string} options.infuraUrl - URL for infura ledger server
+ * @param  {Object} options.activeVault - Details of the CASP vault to use for signature
+ * @param  {Object} options.addressInfo - Information of the address that is the
+ *                  source(from) of the transaction (address, publicKeyDER )
+ * @param  {Object} options.pendingTransaction - Details of the transaction to sign,
+ *                  including: hashToSign and txData
+ * @return {Object} Signature data with:
+ *                  signOperation - details of the CASP signature quorum operation
+ *                  serializedSignedTransaction - serialized signed transaction that can be send to the ledger
+ */
 async function signTransaction(options) {
   var web3 = new Web3(options.infuraUrl);
   const vaultId = options.activeVault.id;
@@ -183,6 +229,13 @@ async function signTransaction(options) {
   }
 }
 
+/**
+ * Sends a signed transaction to Infura ledger
+ * @param  {Object} options
+ * @param  {string} options.infuraUrl - URL for infura ledger server
+ * @param  {string} options.pendingTransaction.signed - serialized signed transaction that can be send to the ledger
+ * @return {string} transaction hash of the sent transaction
+ */
 async function sendTransaction(options) {
   var web3 = new Web3(options.infuraUrl);
   var txHex = options.pendingTransaction.signed;

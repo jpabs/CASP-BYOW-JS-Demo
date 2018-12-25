@@ -3,9 +3,22 @@ const inquirer = require('inquirer');
 const util = require('./util');
 const Promise = require('bluebird');
 
-// capsMngUrl
-// activeAccount
-// activeParticipant
+/**
+ * Selects an active participant
+ * If multiple active participants are available, try to use the last selected one
+ * or prompt the user to choose one
+ *
+ * If there's only one active participant, use it.
+ *
+ * If no active participants, prompt the user for creating a new one and waits
+ * for its activation
+ *
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL of CASP management API
+ * @param  {Object} options.activeAccount - Details of the active casp accounts (id, name)
+ * @param  {Object} options.activeParticipant - Details of the last used participant(id, name)
+ * @return {Object} The selected participant details (id, name etc...)
+ */
 async function selectParticipant(options) {
   const participantsUrl = `${options.caspMngUrl}/accounts/${options.activeAccount.id}/participants`;
   util.showSpinner('Fetching participants');
