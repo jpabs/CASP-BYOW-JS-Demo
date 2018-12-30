@@ -2,7 +2,7 @@
 
 This demo is a terminal application that shows how to use the CASP (Crypto Asset Security Platform) API from an external Ethereum wallet for creating and signing transactions.
 
-CASP also provides the necessary APIs so that you can bring your own wallet (**BYOW**), meaning that you can use whatever ledger you have, and control the vault and key operations with CASP. Using BYOW, you can create an implementation that can handle any coin type, as well as any special operations that you use to communicate with your ledger and for ledger processing.
+CASP provides the necessary APIs so that you can bring your own wallet (**BYOW**), meaning that you can use whatever ledger you have, and control the vault and key operations with CASP. Using BYOW, you can create an implementation that can handle any coin type, as well as any special operations that you use to communicate with your ledger and for ledger processing.
 
 ## Overview
 This demo shows the following:
@@ -29,15 +29,15 @@ Request a signature approval from vault participants and use the signature to si
 
 ### Installation
 * Get the source code
-```
-$ git clone https://github.com/unbound-tech/CASP-BYOW-JS-Demo.git
-```
+    ```
+    $ git clone https://github.com/unbound-tech/CASP-BYOW-JS-Demo.git
+    ```
 * Install dependencies
-```
-$ cd CASP-BYOW-JS-Demo
-$ npm install
-```
+    ```
+    $ cd CASP-BYOW-JS-Demo
+    $ npm install
+    ```
 * Run the demo
-```
-$ npm start
-```
+    ```
+    $ npm start
+    ```
