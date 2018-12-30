@@ -9,7 +9,7 @@ This demo shows the following:
 - **Connecting to CASP**   
 Connect to CASP and authenticate with bearer token
 - **Accounts and Participants**
-- **Vaults**
+- **Vaults**    
 Create a vault and activate it by joining a participant   
 - **Generating Ethereum address**   
 Use CASP to generate a new ECDSA key-pair and use it to generate a new Ethereum address
