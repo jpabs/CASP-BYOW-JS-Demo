@@ -4,10 +4,10 @@ const util = require('./util');
 const superagent = util.superagent;
 
 /**
- * Selects an active CASP account
- * Try to use last selected account
- * If there is only one active account use it
- * Othewise if there are multiple active accounts, let the user select one
+ * Selects an active CASP account.
+ * Tries to use last selected account.
+ * If there is only one active account, use it.
+ * Othewise, if there are multiple active accounts, let the user select one.
  *
  * @param  {Object} options
  * @param  {string} options.caspMngUrl - The URL of CASP management API
