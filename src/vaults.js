@@ -5,11 +5,12 @@ const superagent = util.superagent;
 const Promise = require('bluebird');
 
 /**
- * Selects an active vault
- * If there is only one active vault, use it
+ * Selects an active vault.
+ * If there is only one active vault, use it.
  * If there is more than one active vault, try to use last selected vault
- * or let the user choose a vault
- * If there are no active vault, prompt the user to create a new vault
+ * or let the user choose a vault.
+ * If there is no active vault, prompt the user to create a new vault.
+ *
  * @param  {Object} options
  * @param  {string} options.caspMngUrl - The URL for CASP management API
  * @param  {Object} options.activeAccount - Details of the active CASP accounts (id, name)
@@ -98,7 +99,7 @@ async function createVault(options) {
           .send(vaultOptions)).body;
       util.hideSpinner();
       util.log(`Vault ${newVault.name} created successfully.`);
-      util.log(`Vault is not active until participant '${options.activeParticipant.name} will join`);
+      util.log(`Vault is not active until participant '${options.activeParticipant.name} joins`);
       util.log(`To join with bot, run: 'java -Djava.library.path=. -jar BotSigner.jar -u http://localhost/casp -p ${options.activeParticipant.id} -w 1234567890'`);
 
       util.showSpinner('Waiting for participant to join vault')
