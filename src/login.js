@@ -3,14 +3,14 @@ const util = require('./util');
 const inquirer = require('inquirer');
 
 /**
- * Login to CASP
- * If credentials are provided in options, try to use it.
- * Otherwise, prompt the user for credentials
- * If necessary, upon first login, prompt the user to change his password
+ * Login to CASP.
+ * If credentials are provided in options, try to use them.
+ * Otherwise, prompt the user for credentials.
+ * If necessary, upon first login, prompt the user to change his password.
  *
  * @param  {Object} options
  * @param  {string} options.caspMngUrl - The URL of CASP management API
- * @param  {Object} options.caspCredentials - Last used credentials for casp
+ * @param  {Object} options.caspCredentials - Last used credentials for CASP
  * @param  {string} options.caspCredentials.user - Last used username
  * @param  {string} options.caspCredentials.password - Last used password
  */ 
