@@ -4,14 +4,14 @@ const util = require('./util');
 const Promise = require('bluebird');
 
 /**
- * Selects an active participant
+ * Selects an active participant.
  * If multiple active participants are available, try to use the last selected one
- * or prompt the user to choose one
+ * or prompt the user to choose one.
  *
  * If there's only one active participant, use it.
  *
- * If no active participants, prompt the user for creating a new one and waits
- * for its activation
+ * If there are no active participants, prompt the user to create a new one and wait
+ * for its activation.
  *
  * @param  {Object} options
  * @param  {string} options.caspMngUrl - The URL of CASP management API
