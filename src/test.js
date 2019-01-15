@@ -7,10 +7,11 @@ const Promise = require('bluebird');
 const Web3 = require('web3');
 const qrcode = require('qrcode-terminal');
 
-// use locally saved data from previous executions
-// for example, if we already created a vault use it and don't create again
-// the current execution data is saved at the end
-// to reset, dataFile can be deleted before next execution
+// Use locally saved data from previous executions.
+// For example, if we already created a vault, use it and don't create again.
+// The current execution data is saved at the end.
+// To reset, dataFile can be deleted before the next execution.
+
 var appData = {};
 
 // disable certificate validation to allow self-signed certificates used by CASP
@@ -90,7 +91,7 @@ async function init() {
     } catch(e) {
       util.hideSpinner();
       util.logError(e);
-      util.log(`Could not connect to CASP at '${caspUrl}' please check that the URL is correct`);
+      util.log(`Could not connect to CASP at '${caspUrl}'. Please check that the URL is correct`);
       caspUrl = undefined;
     }
   }
@@ -109,7 +110,7 @@ async function init() {
       util.log(`Connected to Infura-${net}`);
     } catch(e) {
       util.hideSpinner();
-      util.log(`Could not connect to infura, please try again: ${e.message}`);
+      util.log(`Could not connect to Infura, please try again: ${e.message}`);
       web3 = undefined;
     }
   }
