@@ -7,6 +7,7 @@ const EthereumTx = require('ethereumjs-tx');
 const chainId = 3; //eth-ropsten
 const util = require('./util');
 const Promise = require('bluebird');
+const rlp = require('rlp');
 
 var web3;
 
@@ -44,6 +45,31 @@ function getRawEcPublicKeyFromDerHex(publicKeyDerHexString) {
   const asn = asn1js.fromBER(arrayBuffer.slice(0));
   var hex = asn.result.valueBlock.value[1].valueBlock.valueHex;
   return Buffer.from(hex);
+}
+
+
+/**
+ * Returns an rlp serialized transaction for verification by CASP
+ * This transaction is sent to CASP as rawTransaction for hash verification
+ * CASP will run the keccak 256 algorithm on this transaction and will verify the
+ * hash against the hash sent for signature.
+ * @param  {type} tx the EthereumJs transaction
+ * @return {type} a hex encoded string with rlp-serialized transaction
+ */
+function getRlpEncodedRawTransactionForSignature(tx) {
+  var chainId = tx._chainId;
+  var items;
+  if (chainId > 0) {
+    const raw = tx.raw.slice();
+    tx.v = chainId;
+    tx.r = 0;
+    tx.s = 0;
+    items = tx.raw;
+    tx.raw = raw;
+  } else {
+    items = tx.raw.slice(0, 6);
+  }
+  return rlp.encode(items).toString('hex');
 }
 
 /**
@@ -150,7 +176,8 @@ async function createTransaction(options) {
 
   return {
     txData: transactionData,
-    hashToSign: txObj.hash(false).toString('hex')
+    hashToSign: txObj.hash(false).toString('hex'),
+    rawTransaction: getRlpEncodedRawTransactionForSignature(txObj)
   }
 }
 
@@ -173,12 +200,17 @@ async function signTransaction(options) {
   const vaultId = options.activeVault.id;
   var pendingTransaction = options.pendingTransaction;
   util.showSpinner('Requesting signature from CASP');
+  console.log(pendingTransaction.rawTransaction )
   try {
     var quorumRequestOpId = (await util.superagent.post(`${options.caspMngUrl}/vaults/${vaultId}/sign`)
       .send({
         dataToSign: [
           pendingTransaction.hashToSign
         ],
+        rawTransactions: [
+          pendingTransaction.rawTransaction
+        ],
+        ledgerHashAlgorithm: 'SHA3_256',
         publicKeys: [
           options.addressInfo.publicKeyDER
         ],
