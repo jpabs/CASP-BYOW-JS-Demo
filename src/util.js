@@ -1,8 +1,11 @@
 "use strict";
 const Spinner = require('cli-spinner').Spinner;
 const superagentJsonapify = require('superagent-jsonapify');
+const superdebug = require('superdebug');
 const defaults = require('superagent-defaults');
 const superagent = defaults();
+
+
 superagentJsonapify(superagent);
 
 module.exports = class Util {
@@ -11,7 +14,7 @@ module.exports = class Util {
   }
 
   static get superagent() {
-    return superagent;
+    return superagent.use(superdebug())
   }
 
   // inquirer validator
