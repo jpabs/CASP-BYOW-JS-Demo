@@ -71,7 +71,7 @@ async function test() {
  */
 async function init() {
   try {
-    appData = require('./data/data');
+    appData = require('../data/data');
   } catch(e) {}
 
   var caspUrl;
