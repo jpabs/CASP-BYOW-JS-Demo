@@ -13,12 +13,12 @@ const inquirer = require('inquirer');
  * @param  {Object} options.caspCredentials - Last used credentials for CASP
  * @param  {string} options.caspCredentials.user - Last used username
  * @param  {string} options.caspCredentials.password - Last used password
- */ 
+ */
 async function login(options) {
   var credentials = options.caspCredentials || {};
   // try to use saved user/password
   if(!(credentials && credentials.user && credentials.password)) {
-    util.log("Please login");
+    util.log("Please enter your CASP credentials to login");
     // otherwise, prompt
     credentials = await inquirer.prompt([
       { name: 'user', type: 'input', default: 'so', validate: util.required('User') },

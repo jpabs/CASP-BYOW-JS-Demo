@@ -26,19 +26,23 @@ async function selectActiveVault(options) {
   util.hideSpinner();
 
   vaults = vaults.filter(v => v.isActive);
-  // if only one active vault use it,
-  // otherwise try to use last selected vault
-  var selected = vaults.length === 1 && vaults[0]
-            || vaults.find(v => v.id === (options.activeVault || {}).id);
+  // try to use last selected vault
+  var selected = vaults.find(v => v.id === (options.activeVault || {}).id);
 
   if(vaults.length && !selected) {
     util.log('Please choose a vault')
     selected = (await inquirer.prompt([
       {name: 'vault', message: 'Vault: ', validate: util.required('Vault')
-      , type: 'list', choices: vaults.map(v => ({name: v.name, value: v}))}
+      , type: 'list', choices: [
+        {name: 'Create new vault', value: undefined},
+        ...vaults.map(v => ({name: v.name, value: v}))
+      ]}
     ])).vault;
-  } else if(!vaults.length){
+  }
+  if(!vaults.length) {
     util.log('No active vaults found, please create one');
+  }
+  if(!selected) {
     var participant = options.activeParticipant;
     while(!selected) {
       selected = await createVault(options);
@@ -63,14 +67,36 @@ async function selectActiveVault(options) {
  */
 async function createVault(options) {
   var newVault;
+  const ETH_COIN_TYPE = 60; //ETH see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
   while(!newVault) {
     // prompt user for name and description
     var vaultOptions = await inquirer.prompt([
       {name: 'name', message: "Vault Name: ",
-        validate: util.required("Vault Name"), default: "BYOW Eth demo"},
+        validate: util.required("Vault Name"), default: `Demo ${options.demoType}`},
       {name: 'description', message: "Vault Description: ",
-        default: 'Test BYOW deposit and withdrawal with Ethereum'}
+        default: 'BYOW demo'},
+      {name: 'hierarchy', message: "Vault hierarchy: ",
+          default: 'BIP44', type:'list', choices: [
+            {
+              name: "BIP44 - multi address vault",
+              value: "BIP44"
+            },
+            {
+              name: "NONE - single address vault",
+              value: "NONE"
+            }
+          ]
+      },
+      {name: 'cryptoKind', message: "Vault crypto kind: ",
+          default: 'ECDSA', type: 'list', choices: ['ECDSA', 'EDDSA'],
+          when: options.demoType === 'GEN_PUB_KEY'}, // For eth demo only ECDSA is supported
+      {name: 'coinType', message: "Coin type: ", default: ETH_COIN_TYPE,
+          validate: util.required("Coin type")},
+      {name: 'providerKind', message: "Provider kind: ", default: 'ETH_BYOW',
+          validate: util.required("Provider kind")}
+
     ]);
+    vaultOptions.cryptoKind = vaultOptions.cryptoKind || 'ECDSA';
     // add vault attributes for Ethereum
     vaultOptions = {
       ...vaultOptions,
@@ -86,11 +112,7 @@ async function createVault(options) {
             }
           ]
         }
-      ],
-      cryptoKind: "ECDSA",
-      providerKind: "ETH_BYOW",
-      hierarchy: 'BIP44',
-      coinType: 60 //ETH see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+      ]
     };
     util.showSpinner('Creating vault');
     const vaultsUrl = `${options.caspMngUrl}/accounts/${options.activeAccount.id}/vaults`
@@ -103,6 +125,10 @@ async function createVault(options) {
       util.log(`To join with bot, run: 'java -Djava.library.path=. -jar BotSigner.jar -u http://localhost/casp -p ${options.activeParticipant.id} -w 1234567890'`);
 
       util.showSpinner('Waiting for participant to join vault')
+
+      //support old versions of CASP which returned vaultID instead of id
+      newVault.id = newVault.id || newVault.vaultID;
+
       try {
         while(newVault.status !== 'INITIALIZED') {
           await Promise.delay(500);

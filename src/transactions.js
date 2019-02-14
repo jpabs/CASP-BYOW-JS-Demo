@@ -18,7 +18,8 @@ var web3;
  * @param  {Buffer} rawEcPubKey - raw bytes of the EC public key
  * @return {string} An Ethereum address
  */
-function addressFromPublicKey(rawEcPubKey) {
+function addressFromPublicKey(rawEcPubKeyHex) {
+  var rawEcPubKey = Buffer.from(rawEcPubKeyHex, 'hex');
   if(rawEcPubKey.length === 65) {
     // remove prefix
     rawEcPubKey = rawEcPubKey.slice(1);
@@ -72,6 +73,36 @@ function getRlpEncodedRawTransactionForSignature(tx) {
   return rlp.encode(items).toString('hex');
 }
 
+async function getPublicKeyFromCasp(options) {
+  options = {...{coinId: 60}, ...options};
+  const vault = options.activeVault;
+  const isBip44 = vault.hierarchy === 'BIP44';
+  var coinId = options.coinId;
+
+  var publicKeyFromCasp;
+  if(isBip44) {
+    util.log(`Generating key with CASP for BIP44 vault`);
+    // for BIP-44 vaults generate a new public key
+    publicKeyFromCasp = (await util.superagent.post(`${options.caspMngUrl}/vaults/${vault.id}/coins/${coinId}/accounts/0/chains/external/addresses`))
+                      .body.publicKey;
+  } else {
+    util.log(`Getting public key from CASP for non-BIP44 vault`);
+    // for non BIP-44 vaults, get the single vault public key
+    publicKeyFromCasp = (await util.superagent.get(`${options.caspMngUrl}/vaults/${vault.id}/publickey`)).body.publicKey;
+  }
+
+  // for ECDSA CASP returns DER encoded key so we extract raw key from it
+  // for EDDSA CASP returns the raw key directly
+  var publicKeyRaw = (vault.cryptoKind === 'ECDSA')
+      ? getRawEcPublicKeyFromDerHex(publicKeyFromCasp)
+      : publicKeyFromCasp;
+  return {
+    // this will be used to reference the key in sign requests
+    keyId: publicKeyFromCasp,
+    publicKeyRaw: publicKeyRaw.toString('hex')
+  };
+}
+
 /**
  * Creates a new BIP44 Ethereum address with CASP
  *
@@ -82,24 +113,12 @@ function getRlpEncodedRawTransactionForSignature(tx) {
  * includes the address, DER encoded public key and hex encoded raw public key bytes
  */
 async function createAddress(options) {
-  const vault = options.activeVault;
-  const isBip44 = vault.hierarchy === 'BIP44';
-  var coinId = 60; // ETH - this was set on vault creation
-  util.log('Generating public key with CASP');
-  var publicKeyDER = (await util.superagent.post(`${options.caspMngUrl}/vaults/${vault.id}/coins/${coinId}/accounts/0/chains/external/addresses`))
-                      .body.publicKey;
-
-  // extract the raw EC public key bytes from DER encoded public key
-  var publicKeyRaw = getRawEcPublicKeyFromDerHex(publicKeyDER);
+  var publicKeyInfo = await getPublicKeyFromCasp(options);
 
   // convert to Ethereum address
-  var address = addressFromPublicKey(publicKeyRaw);
+  var address = addressFromPublicKey(publicKeyInfo.publicKeyRaw);
   util.log(`Generated address: ${address}`)
-  return {
-    address: address,
-    publicKeyDER: publicKeyDER,
-    publicKeyRaw: publicKeyRaw.toString('hex')
-  };
+  return {...publicKeyInfo, address: address};
 }
 
 /**
@@ -200,26 +219,32 @@ async function signTransaction(options) {
   const vaultId = options.activeVault.id;
   var pendingTransaction = options.pendingTransaction;
   util.showSpinner('Requesting signature from CASP');
-  console.log(pendingTransaction.rawTransaction )
+  var signRequest = {
+    dataToSign: [
+      pendingTransaction.hashToSign
+    ],
+    publicKeys: [
+      options.addressInfo.keyId
+    ],
+    description: 'Test transaction Eth',
+    // the details are shown to the user when requesting approval
+    details: JSON.stringify(pendingTransaction, undefined, 2),
+    // callbackUrl: can be used to receive notifictaion when the sign operation
+    // is approved
+  };
+
+  // casp added support for eth rawTransaction verification
+  var useRawTransaction = options.caspRelease >= 1812;
+  if(useRawTransaction) {
+    signRequest.rawTransactions = [
+      pendingTransaction.rawTransaction
+    ];
+    signRequest.ledgerHashAlgorithm = 'SHA3_256';
+  }
+
   try {
     var quorumRequestOpId = (await util.superagent.post(`${options.caspMngUrl}/vaults/${vaultId}/sign`)
-      .send({
-        dataToSign: [
-          pendingTransaction.hashToSign
-        ],
-        rawTransactions: [
-          pendingTransaction.rawTransaction
-        ],
-        ledgerHashAlgorithm: 'SHA3_256',
-        publicKeys: [
-          options.addressInfo.publicKeyDER
-        ],
-        description: 'Test transaction Eth',
-        // the details are shown to the user when requesting approval
-        details: JSON.stringify(pendingTransaction, undefined, 2),
-        // callbackUrl: can be used to receive notifictaion when the sign operation
-        // is approved
-      })).body.operationID;
+      .send(signRequest)).body.operationID;
     util.hideSpinner();
     util.log('Signature process started, signature must be approved by vault participant');
     util.log(`To approve with bot, run: 'java -Djava.library.path=. -jar BotSigner.jar -u http://localhost/casp -p ${options.activeParticipant.id} -w 1234567890'`);
@@ -283,5 +308,6 @@ module.exports = {
   waitForDeposit,
   createTransaction,
   signTransaction,
-  sendTransaction
+  sendTransaction,
+  getPublicKeyFromCasp
 }

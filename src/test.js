@@ -35,30 +35,47 @@ async function test() {
     var activeParticipant = await participants.selectParticipant(appData);
     save({activeParticipant});
 
-    var vaults = require('./vaults');
-    var activeVault = await vaults.selectActiveVault(appData);
-    save({activeVault});
+    switch(appData.demoType) {
+      case 'GEN_PUB_KEY':
+        var vaults = require('./vaults');
+        var activeVault = await vaults.selectActiveVault(appData);
+        save({activeVault});
+        var transactions = require('./transactions');
+        var publicKey = await transactions.getPublicKeyFromCasp(appData);
+        util.log(`Public key:`)
+        util.log(JSON.stringify(publicKey, undefined, 2));
+        save({publicKey});
+        break;
 
-    var transactions = require('./transactions');
-    var addressInfo = appData.addressInfo || await transactions.createAddress(appData);
-    save({addressInfo});
+      case 'ETH_FULL':
+        var vaults = require('./vaults');
+        var activeVault = await vaults.selectActiveVault(appData);
+        save({activeVault});
 
-    addressInfo.balance = await transactions.waitForDeposit(appData);
-    save({addressInfo});
+        var transactions = require('./transactions');
+        var addressInfo = appData.addressInfo || await transactions.createAddress(appData);
+        save({addressInfo});
 
-    var pendingTransaction = appData.pendingTransaction || await transactions.createTransaction(appData);
-    save({pendingTransaction});
+        addressInfo.balance = await transactions.waitForDeposit(appData);
+        save({addressInfo});
 
-    if(!pendingTransaction.signed) {
-      var signInfo = await transactions.signTransaction(appData);
-      save({signOperation: signInfo.signOperation});
-      pendingTransaction.signed = signInfo.serializedSignedTransaction;
-      save({pendingTransaction});
+        var pendingTransaction = appData.pendingTransaction || await transactions.createTransaction(appData);
+        save({pendingTransaction});
+
+        if(!pendingTransaction.signed) {
+          var signInfo = await transactions.signTransaction(appData);
+          save({signOperation: signInfo.signOperation});
+          pendingTransaction.signed = signInfo.serializedSignedTransaction;
+          save({pendingTransaction});
+        }
+
+        pendingTransaction.transactionHash = pendingTransaction.transactionHash
+              || await transactions.sendTransaction(appData);
+        save({pendingTransaction});
+
+        break;
     }
 
-    pendingTransaction.transactionHash = pendingTransaction.transactionHash
-          || await transactions.sendTransaction(appData);
-    save({pendingTransaction});
   } catch(e) {
     util.logError(e);
     console.log(e);
@@ -75,9 +92,10 @@ async function init() {
   } catch(e) {}
 
   var caspUrl;
+  var defaultUrl = 'https://localhost';
   while(!caspUrl) {
     caspUrl = appData.caspUrl || (await inquirer.prompt([{name:'url', message: 'CASP URL: ',
-        default: 'https://localhost', validate: util.required('CASP URL')}])).url;
+        default: defaultUrl, validate: util.required('CASP URL')}])).url;
     CASP_API_BASE = `${caspUrl}/casp/api/v1.0/mng`;
     try {
       util.showSpinner('Connecting to CASP');
@@ -87,35 +105,56 @@ async function init() {
       util.log(`Connected to CASP at ${caspUrl}`)
       util.log(result.body);
       appData.caspUrl = caspUrl;
+      appData.caspVersion = result.body.version;
+      try {
+        appData.caspRelease =  parseInt(appData.caspVersion.match(/\d+\.\d+\.(\d+)\./)[1]);
+      } catch(e) {}
       save();
     } catch(e) {
       util.hideSpinner();
       util.logError(e);
       util.log(`Could not connect to CASP at '${caspUrl}'. Please check that the URL is correct`);
-      caspUrl = undefined;
+      defaultUrl = caspUrl;
+      appData.caspUrl = caspUrl = undefined;
     }
   }
 
-  var infuraToken;
-  var web3;
-  while(!web3) {
-    infuraToken = appData.infuraToken || (await inquirer.prompt([{name:'token', message: `Infura Token (get it from 'https://infura.io): `,
-        validate: util.required('Infura token')}])).token;
-    var infuraUrl = `https://ropsten.infura.io/v3/${infuraToken}`;
-    web3 = new Web3(infuraUrl);
-    try {
-      util.showSpinner('Connecting to infura')
-      var net = await web3.eth.net.getNetworkType();
-      util.hideSpinner();
-      util.log(`Connected to Infura-${net}`);
-    } catch(e) {
-      util.hideSpinner();
-      util.log(`Could not connect to Infura, please try again: ${e.message}`);
-      web3 = undefined;
+  var demoType = appData.demoType = appData.demoType || (await inquirer.prompt([
+    {name: "demoType", message: "Select demo to run: ",
+      default: 'ETH_FULL',
+      type: "list", choices: [
+        {
+          name: 'BYOW full cycle with Ethereum deposit and withdrawal',
+          value: 'ETH_FULL'
+        },
+        {
+          name: 'Public key generation only',
+          value: 'GEN_PUB_KEY'
+        }
+      ]}
+  ])).demoType;
+  if(demoType === 'ETH_FULL') {
+    var infuraToken;
+    var web3;
+    while(!web3) {
+      infuraToken = appData.infuraToken || (await inquirer.prompt([{name:'token', message: `Infura Token (get it from 'https://infura.io): `,
+          validate: util.required('Infura token')}])).token;
+      var infuraUrl = `https://ropsten.infura.io/v3/${infuraToken}`;
+      web3 = new Web3(infuraUrl);
+      try {
+        util.showSpinner('Connecting to infura')
+        var net = await web3.eth.net.getNetworkType();
+        util.hideSpinner();
+        util.log(`Connected to Infura-${net}`);
+      } catch(e) {
+        util.hideSpinner();
+        util.log(`Could not connect to Infura, please try again: ${e.message}`);
+        web3 = undefined;
+      }
     }
+    appData.infuraToken = infuraToken;
+    appData.infuraUrl = infuraUrl;
   }
-  appData.infuraToken = infuraToken;
-  appData.infuraUrl = infuraUrl;
   save();
   return appData;
 }
