@@ -32,6 +32,10 @@ module.exports = class Util {
     this.hideSpinner();
     title = title || 'Something went wrong';
     this.log(`${title}: ${this.getErrMessage(e)}`);
+    var details = e.response && e.response.text;
+    if(details) {
+      this.log(details);
+    }
   }
 
   static showSpinner(text) {
