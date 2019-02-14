@@ -73,6 +73,17 @@ function getRlpEncodedRawTransactionForSignature(tx) {
   return rlp.encode(items).toString('hex');
 }
 
+/**
+ * Gets a public key from CASP
+ * For BIP44 vaults this will create a new key
+ * For non-BIP44 vaults it will return the only key of the vault
+ *
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL of CASP management API
+ * @param  {Object} options.activeVault - Details of the last selected vault(id, name, hierarchy)
+ * @return {Object} Details of the public key with id and raw bytes.
+ *          The id is used with CASP sign as a reference to the key to sign with
+ */
 async function getPublicKeyFromCasp(options) {
   options = {...{coinId: 60}, ...options};
   const vault = options.activeVault;

@@ -36,6 +36,21 @@ async function test() {
     save({activeParticipant});
 
     switch(appData.demoType) {
+      // shows how to list and add coins to BIP44 vaults
+      case 'MULTI_COIN':
+        var vaults = require('./vaults');
+        var activeVault = await vaults.selectActiveVault(appData);
+        save({activeVault});
+
+        var addCoin;
+        do {
+          var coins = await vaults.listCoins(appData);
+          util.log(`Available vault coins: ${coins.join(', ')}`);
+          addCoin = await vaults.addCoin(appData);
+        } while(addCoin);
+        break;
+
+      // shows how to generate public key
       case 'GEN_PUB_KEY':
         var vaults = require('./vaults');
         var activeVault = await vaults.selectActiveVault(appData);
@@ -47,6 +62,7 @@ async function test() {
         save({publicKey});
         break;
 
+      // full cycle of deposit, signature and withdrawal for Ethereum BYOW
       case 'ETH_FULL':
         var vaults = require('./vaults');
         var activeVault = await vaults.selectActiveVault(appData);
@@ -78,7 +94,7 @@ async function test() {
 
   } catch(e) {
     util.logError(e);
-    console.log(e);
+    // console.log(e);
   }
 }
 
@@ -130,6 +146,10 @@ async function init() {
         {
           name: 'Public key generation only',
           value: 'GEN_PUB_KEY'
+        },
+        {
+          name: 'Multi coins vault',
+          value: 'MULTI_COIN'
         }
       ]}
   ])).demoType;

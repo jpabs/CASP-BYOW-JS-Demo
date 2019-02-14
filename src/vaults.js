@@ -26,6 +26,11 @@ async function selectActiveVault(options) {
   util.hideSpinner();
 
   vaults = vaults.filter(v => v.isActive);
+
+  // multiple coins is only supported for BIP44 vaults
+  if(options.demoType === 'MULTI_COIN') {
+    vaults = vaults.filter(v => v.hierarchy === 'BIP44');
+  }
   // try to use last selected vault
   var selected = vaults.find(v => v.id === (options.activeVault || {}).id);
 
@@ -53,9 +58,6 @@ async function selectActiveVault(options) {
   return selected;
 }
 
-// options.activeParticipant
-// options.activeAccount
-// options.caspMngUrl
 /**
  * Prompts the user and creates a new vault
  * @param  {Object} options
@@ -63,11 +65,27 @@ async function selectActiveVault(options) {
  * @param  {Object} options.activeAccount - Details of the active CASP accounts (id, name)
  * @param  {Object} options.activeParticipant - Details of an active participant
  *                  to use as vault member for the new vault
+ * @param  {Object} options.demoType - the demo type which is currently running
+ *                   can be 'MULTI_COIN', 'ETH_FULL' or 'GEN_PUB_KEY'
  * @return {Object} Data of the created vault(id, name etc...)
  */
 async function createVault(options) {
   var newVault;
   const ETH_COIN_TYPE = 60; //ETH see: https://github.com/satoshilabs/slips/blob/master/slip-0044.md
+  var hierarchyTypes = [
+    {
+      name: "BIP44 - multi address vault",
+      value: "BIP44"
+    }
+  ];
+  if(options.demoType != 'MULTI_COIN') {
+    // for multi coin demo - only BIP44 is relevant
+    hierarchyTypes.push(
+      {
+        name: "NONE - single address vault",
+        value: "NONE"
+      });
+  }
   while(!newVault) {
     // prompt user for name and description
     var vaultOptions = await inquirer.prompt([
@@ -76,16 +94,7 @@ async function createVault(options) {
       {name: 'description', message: "Vault Description: ",
         default: 'BYOW demo'},
       {name: 'hierarchy', message: "Vault hierarchy: ",
-          default: 'BIP44', type:'list', choices: [
-            {
-              name: "BIP44 - multi address vault",
-              value: "BIP44"
-            },
-            {
-              name: "NONE - single address vault",
-              value: "NONE"
-            }
-          ]
+          default: 'BIP44', type:'list', choices: hierarchyTypes
       },
       {name: 'cryptoKind', message: "Vault crypto kind: ",
           default: 'ECDSA', type: 'list', choices: ['ECDSA', 'EDDSA'],
@@ -148,7 +157,50 @@ async function createVault(options) {
   return newVault;
 }
 
+/**
+ * List available coins in a BIP44 vault
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {Object} options.activeVault - Details of the vault to query (id)
+ * @return {array} A list of the coins currently available in the active vault
+ */
+async function listCoins(options) {
+  var activeVault = options.activeVault;
+  return (await superagent.get(`${options.caspMngUrl}/vaults/${activeVault.id}/coins`)).body.coins;
+}
+
+/**
+ * Prompts the user for adding a coin to an existing BIP44 vault
+ * @param  {Object} options
+ * @param  {string} options.caspMngUrl - The URL for CASP management API
+ * @param  {Object} options.activeVault - Details of the vault to add the coin to (id)
+ * @return {Object} The response from addCoin or false if the user chose not to add another coin
+ */
+async function addCoin(options) {
+  var answers = await inquirer.prompt([
+    {
+      name: 'addCoin', type: 'confirm', default: true,
+      message: 'Add another coin ?'
+    },
+    {
+      when: answers => answers.addCoin,
+      name: 'coinToAdd', message: 'Coin to add: ',
+      validate: util.required('Coin to add')
+    }
+  ]);
+  if(answers.coinToAdd) {
+    util.showSpinner('Adding coin');
+    var response = (await superagent.post(`${options.caspMngUrl}/vaults/${options.activeVault.id}/coins`)
+      .send({ coinType: answers.coinToAdd})).body;
+    util.hideSpinner();
+    return response;
+  } else {
+    return false;
+  }
+}
 
 module.exports = {
-  selectActiveVault
+  selectActiveVault,
+  listCoins,
+  addCoin
 }
