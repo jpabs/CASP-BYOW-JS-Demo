@@ -276,13 +276,29 @@ async function signTransaction(options) {
     if(v === 27) v = 1;
     if(v === 28) v = 0;
     var tx = new EthereumTx(pendingTransaction.txData);
-    tx.r = new Buffer.from(signature.slice(0, 64).toLowerCase(), 'hex');
-		tx.s = new Buffer.from(signature.slice(64).toLowerCase(), 'hex');
+    var r = tx.r = new Buffer.from(signature.slice(0, 64).toLowerCase(), 'hex');
+		var s = tx.s = new Buffer.from(signature.slice(64).toLowerCase(), 'hex');
     // According to https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md
-    tx.v = chainId * 2 + v + 35;
+    var v = tx.v = chainId * 2 + v + 35;
     // validate that the from address decoded from signature is our address
     var fromAddress = pendingTransaction.txData.from;
 
+    // verify signature by recovering the address for it and comparing against
+    // our original 'from' address
+    try {
+      var recoveredPublicKey = EthUtil.ecrecover(new Buffer.from(pendingTransaction.hashToSign, 'hex'), v, r, s, chainId).toString('hex');
+      var recoveredAddress = addressFromPublicKey(recoveredPublicKey);
+      if(fromAddress.toLowerCase() !== recoveredAddress.toLowerCase()) {
+        throw `Invalid recovered address: ${fromAddress.toLowerCase()} <> ${recoveredAddress.toLowerCase()}`;
+      }
+      util.log(`Signature verified successfully`);
+    } catch (e) {
+      util.log('Signature verification failed');
+      throw e;
+    }
+
+    // another method for verification which interanlly runs similar code to the
+    // one above
     if(tx.from.toString('hex').toLowerCase() !== fromAddress.toLowerCase().slice(2)) {
       throw new Error("Failed to sign transaction, invalid v value");
     }
