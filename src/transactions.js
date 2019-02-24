@@ -26,7 +26,7 @@ function addressFromPublicKey(rawEcPubKeyHex) {
   }
   if(!EthUtil.isValidPublic(rawEcPubKey)) throw "Invalid public key";
   const address = EthUtil.pubToAddress(rawEcPubKey);
-  return `0x${address.toString('hex')}`;
+  return EthUtil.toChecksumAddress(`0x${address.toString('hex')}`);
 }
 
 
