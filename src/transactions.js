@@ -283,7 +283,7 @@ async function signTransaction(options) {
     // validate that the from address decoded from signature is our address
     var fromAddress = pendingTransaction.txData.from;
 
-    // verify signature by recovering the address for it and comparing against
+    // verify signature by recovering the public-key/address and comparing against
     // our original 'from' address
     try {
       var recoveredPublicKey = EthUtil.ecrecover(new Buffer.from(pendingTransaction.hashToSign, 'hex'), v, r, s, chainId).toString('hex');
