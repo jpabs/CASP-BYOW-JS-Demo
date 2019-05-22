@@ -4,6 +4,8 @@ This demo is a terminal application that shows how to use the CASP (Crypto Asset
 
 CASP provides the necessary APIs so that you can bring your own wallet (**BYOW**), meaning that you can use whatever ledger you have, and control the vault and key operations with CASP. Using BYOW, you can create an implementation that can handle any coin type, as well as any special operations that you use to communicate with your ledger and for ledger processing.
 
+More info and samples about BYOW can be found [here](https://www.unboundtech.com/docs/CASP/casp-byow.html)
+
 ## Overview
 This demo shows the following:
 - **Connecting to CASP**   
