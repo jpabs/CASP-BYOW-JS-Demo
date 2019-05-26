@@ -43,3 +43,8 @@ Request a signature approval from vault participants and use the signature to si
     ```
     $ npm start
     ```
+* Show curl commands
+    To show communication to the server as `curl` commands use the following command on Linux based systems
+    ```
+    $ DEBUG=super-curl npm start
+    ```
