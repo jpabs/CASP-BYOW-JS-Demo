@@ -31,8 +31,8 @@ async function login(options) {
       .send("grant_type=password")
       .send("client_id=test")
       .send("scope=/mng")
-      .send(`username=${credentials.user}`)
-      .send(`password=${credentials.password}`);
+      .send(`username=${encodeURI(credentials.user)}`)
+      .send(`password=${encodeURI(credentials.password)}`);
     util.hideSpinner();
     util.log(`'${credentials.user}' logged-in. Token will expire in ${response.body.expires_in} seconds`);
     // from now on, add the auth token to every request
@@ -78,7 +78,7 @@ async function changePassword(currentCredentials, caspMngUrl) {
     util.showSpinner('Changing password');
     var response = await util.superagent.put(`${caspMngUrl}/auth/users/password`)
       .auth(currentCredentials.user, currentCredentials.password)
-      .send({ value: newPassword });
+      .send({ value: encodeURI(newPassword) });
     util.hideSpinner();
     util.log('Password changed successfully');
     return newPassword;
