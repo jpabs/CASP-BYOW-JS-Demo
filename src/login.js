@@ -2,7 +2,7 @@
 const util = require('./util');
 const inquirer = require('inquirer');
 
-/**
+/***
  * Login to CASP.
  * If credentials are provided in options, try to use them.
  * Otherwise, prompt the user for credentials.
@@ -28,6 +28,7 @@ async function login(options) {
   util.showSpinner('Authenticating');
   try {
     var response = await util.superagent.post(`${options.caspMngUrl}/auth/tokens`)
+      .auth(encodeURI(credentials.user), encodeURI(credentials.password))
       .send("grant_type=password")
       .send("client_id=test")
       .send("scope=/mng")
